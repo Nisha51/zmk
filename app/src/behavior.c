@@ -292,9 +292,7 @@ SETTINGS_STATIC_HANDLER_DEFINE(behavior, "behavior", NULL, behavior_handle_set,
                                behavior_handle_commit, NULL);
 
 static int behavior_local_id_init(void) {
-    // LOAD SETTINGS!
     settings_load_subtree("behavior");
-    // TODO: Populate the local IDs from the settings table
 
     return 0;
 }
