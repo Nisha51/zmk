@@ -109,15 +109,32 @@ static int ksbb_configure(const struct device *dev, kscan_callback_t callback) {
 
 static int ksbb_enable(const struct device *dev) {
     struct ksbb_data *data = dev->data;
+    const struct ksbb_config *config = dev->config;
     data->enabled = true;
+
+#if IS_ENABLED(CONFIG_PM_DEVICE_RUNTIME)
+    if (!pm_device_runtime_is_enabled(dev) && pm_device_runtime_is_enabled(config->kscan)) {
+        pm_device_runtime_get(config->kscan);
+    }
+#elif IS_ENABLED(CONFIG_PM_DEVICE)
+    pm_device_action_run(config->kscan, PM_DEVICE_ACTION_RESUME);
+#endif // IS_ENABLED(CONFIG_PM_DEVICE)
 
     return 0;
 }
 
 static int ksbb_disable(const struct device *dev) {
     struct ksbb_data *data = dev->data;
+    const struct ksbb_config *config = dev->config;
     data->enabled = false;
 
+#if IS_ENABLED(CONFIG_PM_DEVICE_RUNTIME)
+    if (!pm_device_runtime_is_enabled(dev) && pm_device_runtime_is_enabled(config->kscan)) {
+        pm_device_runtime_put(config->kscan);
+    }
+#elif IS_ENABLED(CONFIG_PM_DEVICE)
+    pm_device_action_run(config->kscan, PM_DEVICE_ACTION_SUSPEND);
+#endif // IS_ENABLED(CONFIG_PM_DEVICE)
     return 0;
 }
 
@@ -131,6 +148,8 @@ static int ksbb_init(const struct device *dev) {
 
     kscan_config(config->kscan, &ksbb_inner_kscan_callback);
     kscan_enable_callback(config->kscan);
+
+    ksbb_enable(dev);
 
     return 0;
 }
@@ -148,7 +167,7 @@ static int ksbb_pm_action(const struct device *dev, enum pm_device_action action
     case PM_DEVICE_ACTION_SUSPEND:
         return ksbb_disable(dev);
     case PM_DEVICE_ACTION_RESUME:
-        return ksbb_disable(dev);
+        return ksbb_enable(dev);
     default:
         return -ENOTSUP;
     }
